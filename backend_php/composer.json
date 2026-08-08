@@ -1,0 +1,16 @@
+{
+  "name": "quokka/php-api-compat",
+  "description": "Lightweight PHP 8 REST compatibility layer for Quokka.",
+  "type": "project",
+  "require": {
+    "php": "^8.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "Quokka\\": "src/"
+    }
+  },
+  "scripts": {
+    "serve": "php -S 0.0.0.0:8080 -t public"
+  }
+}

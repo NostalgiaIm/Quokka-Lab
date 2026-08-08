@@ -1,0 +1,109 @@
+services:
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - rails
+
+  rails:
+    build:
+      context: ./backend_ruby
+    working_dir: /app
+    command: bash -lc "bundle install && bundle exec rails db:prepare && bundle exec rails server -b 0.0.0.0"
+    environment:
+      RAILS_ENV: development
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: quokka
+      POSTGRES_PASSWORD: quokka
+      REDIS_URL: redis://redis:6379/0
+      DEVISE_JWT_SECRET_KEY: development-secret-change-me
+      QUOKKA_AUDIO_ENGINE: /audio_engine/build/quokka_audio
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend_ruby:/app
+      - ./audio_engine:/audio_engine
+      - rails_bundle:/usr/local/bundle
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  sidekiq:
+    build:
+      context: ./backend_ruby
+    working_dir: /app
+    command: bash -lc "bundle install && bundle exec sidekiq"
+    environment:
+      RAILS_ENV: development
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: quokka
+      POSTGRES_PASSWORD: quokka
+      REDIS_URL: redis://redis:6379/0
+      DEVISE_JWT_SECRET_KEY: development-secret-change-me
+      QUOKKA_AUDIO_ENGINE: /audio_engine/build/quokka_audio
+    volumes:
+      - ./backend_ruby:/app
+      - ./audio_engine:/audio_engine
+      - rails_bundle:/usr/local/bundle
+    depends_on:
+      - rails
+      - redis
+
+  php:
+    build:
+      context: ./backend_php
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend_php:/app
+
+  audio_engine:
+    image: ubuntu:24.04
+    working_dir: /app
+    command: bash -lc "apt-get update && apt-get install -y cmake g++ libsndfile1-dev pkg-config && cmake -S . -B build && cmake --build build && tail -f /dev/null"
+    volumes:
+      - ./audio_engine:/app
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: quokka_development
+      POSTGRES_USER: quokka
+      POSTGRES_PASSWORD: quokka
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quokka -d quokka_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8088:80"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - rails
+
+volumes:
+  frontend_node_modules:
+  rails_bundle:
+  postgres_data:

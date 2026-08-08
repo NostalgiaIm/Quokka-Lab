@@ -1,0 +1,19 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  host: <%= ENV.fetch("POSTGRES_HOST", "localhost") %>
+  username: <%= ENV.fetch("POSTGRES_USER", "quokka") %>
+  password: <%= ENV.fetch("POSTGRES_PASSWORD", "quokka") %>
+
+development:
+  <<: *default
+  database: quokka_development
+
+test:
+  <<: *default
+  database: quokka_test
+
+production:
+  <<: *default
+  database: <%= ENV.fetch("POSTGRES_DB", "quokka_production") %>

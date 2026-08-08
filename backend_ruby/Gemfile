@@ -1,0 +1,26 @@
+source "https://rubygems.org"
+
+ruby ">= 3.3.0"
+
+gem "bootsnap", require: false
+gem "devise"
+gem "devise-jwt"
+gem "image_processing", "~> 1.2"
+gem "jbuilder"
+gem "pg", "~> 1.5"
+gem "puma", ">= 6.0"
+gem "rails", "~> 8.0.0"
+gem "redis", ">= 5.0"
+gem "sidekiq"
+gem "tzinfo-data", platforms: %i[mingw mswin x64_mingw jruby]
+
+group :development, :test do
+  gem "debug", platforms: %i[mri mingw x64_mingw]
+  gem "factory_bot_rails"
+  gem "rspec-rails"
+  gem "rubocop-rails", require: false
+end
+
+group :test do
+  gem "shoulda-matchers"
+end
