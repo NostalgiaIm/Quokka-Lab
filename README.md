@@ -1,6 +1,6 @@
-# Quokka
+# Quokka-Lab
 
-Quokka is a web-based music creation and sharing platform. It lets users play notes in the browser, record melodies, upload compositions, share public works, and render offline audio effects through a C++ DSP engine.
+Quokka-Lab is a web-based music creation and sharing platform. It lets users play notes in the browser, record melodies, upload compositions, share public works, and render offline audio effects through a C++ DSP engine.
 
 The project is designed as a multi-language reference application:
 
@@ -10,7 +10,7 @@ The project is designed as a multi-language reference application:
 - PHP provides a lightweight compatibility API.
 - Docker Compose wires the development stack together.
 
-Quokka also reserves an internal integration point for Liora through `POST /internal/liora_trigger`.
+Quokka-Lab also reserves an internal integration point for Liora through `POST /internal/liora_trigger`.
 
 ## Features
 
