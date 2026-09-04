@@ -6,34 +6,23 @@ export interface CollaborationSocket {
 }
 
 /**
- * 用于协作房间的最小 Action Cable 协议客户端。
- * 后续如果需要更完整的 Rails 生态能力，可以替换成 @rails/actioncable。
+ * Creates a lightweight collaboration socket backed by the Go gateway.
+ * The payload is intentionally plain JSON so future native/mobile clients can reuse it.
  */
 export function useWebSocket(roomId: string, onNoteEvent: (event: NoteEvent) => void): CollaborationSocket {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socket = new WebSocket(`${wsProtocol}//${window.location.host}/cable`);
-  const identifier = JSON.stringify({ channel: 'CollaborationChannel', room_id: roomId });
-
-  socket.addEventListener('open', () => {
-    socket.send(JSON.stringify({ command: 'subscribe', identifier }));
-  });
+  const socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws/collaboration/${roomId}`);
 
   socket.addEventListener('message', (message) => {
     const payload = JSON.parse(message.data);
-    if (payload.type || !payload.message?.event) return;
-    onNoteEvent(payload.message.event as NoteEvent);
+    if (!payload.event) return;
+    onNoteEvent(payload.event as NoteEvent);
   });
 
   function sendNoteEvent(event: NoteEvent): void {
     if (socket.readyState !== WebSocket.OPEN) return;
 
-    socket.send(
-      JSON.stringify({
-        command: 'message',
-        identifier,
-        data: JSON.stringify({ action: 'receive', event }),
-      }),
-    );
+    socket.send(JSON.stringify({ event }));
   }
 
   return {

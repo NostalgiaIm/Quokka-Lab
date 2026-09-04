@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 import Keyboard from '@/components/Keyboard.vue';
 import Mixer from '@/components/Mixer.vue';
@@ -8,6 +8,7 @@ import Recorder from '@/components/Recorder.vue';
 import Visualizer from '@/components/Visualizer.vue';
 import { useAudio } from '@/composables/useAudio';
 import { useRecording } from '@/composables/useRecording';
+import { useWebSocket, type CollaborationSocket } from '@/composables/useWebSocket';
 import { useCompositionsStore } from '@/stores/compositions';
 import type { NoteDefinition, Waveform } from '@/types/audio';
 
@@ -20,20 +21,34 @@ const volume = ref(0.6);
 const visualizerMode = ref<'waveform' | 'spectrum'>('waveform');
 const title = ref('Untitled melody');
 const uploadStatus = ref('');
+let collaborationSocket: CollaborationSocket | null = null;
 
 watch(volume, (nextVolume) => audio.setVolume(nextVolume), { immediate: true });
 
 onMounted(() => {
   void compositionsStore.fetchCompositions();
+  collaborationSocket = useWebSocket('default-room', (event) => {
+    if (event.type === 'note_on') {
+      audio.startNote(`remote:${event.note}`, event.frequency, waveform.value);
+    } else {
+      audio.stopNote(`remote:${event.note}`);
+    }
+  });
+});
+
+onUnmounted(() => {
+  collaborationSocket?.close();
 });
 
 async function noteDown(note: NoteDefinition): Promise<void> {
   await audio.resume();
   audio.startNote(note.id, note.frequency, waveform.value);
+  collaborationSocket?.sendNoteEvent({ type: 'note_on', note: note.id, frequency: note.frequency, at: performance.now() });
 }
 
 function noteUp(note: NoteDefinition): void {
   audio.stopNote(note.id);
+  collaborationSocket?.sendNoteEvent({ type: 'note_off', note: note.id, frequency: note.frequency, at: performance.now() });
 }
 
 async function startRecording(): Promise<void> {

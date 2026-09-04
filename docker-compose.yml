@@ -9,11 +9,11 @@ services:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
     depends_on:
-      - rails
+      - go
 
   rails:
     build:
-      context: ./backend_ruby
+      context: ./backend/rails
     working_dir: /app
     command: bash -lc "bundle install && bundle exec rails db:prepare && bundle exec rails server -b 0.0.0.0"
     environment:
@@ -27,8 +27,8 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./backend_ruby:/app
-      - ./audio_engine:/audio_engine
+      - ./backend/rails:/app
+      - ./backend/cpp:/audio_engine
       - rails_bundle:/usr/local/bundle
     depends_on:
       postgres:
@@ -38,7 +38,7 @@ services:
 
   sidekiq:
     build:
-      context: ./backend_ruby
+      context: ./backend/rails
     working_dir: /app
     command: bash -lc "bundle install && bundle exec sidekiq"
     environment:
@@ -50,27 +50,41 @@ services:
       DEVISE_JWT_SECRET_KEY: development-secret-change-me
       QUOKKA_AUDIO_ENGINE: /audio_engine/build/quokka_audio
     volumes:
-      - ./backend_ruby:/app
-      - ./audio_engine:/audio_engine
+      - ./backend/rails:/app
+      - ./backend/cpp:/audio_engine
       - rails_bundle:/usr/local/bundle
     depends_on:
       - rails
       - redis
 
-  php:
+  go:
     build:
-      context: ./backend_php
+      context: ./backend/go
+    working_dir: /app
+    command: go run ./cmd/api
+    environment:
+      QUOKKA_GO_ADDR: :8080
+      QUOKKA_RAILS_URL: http://rails:3000
+      QUOKKA_AUDIO_SOCKET: /tmp/quokka-audio.sock
+      QUOKKA_AUDIO_ENGINE: /audio_engine/build/quokka_audio
     ports:
       - "8080:8080"
     volumes:
-      - ./backend_php:/app
+      - ./backend/go:/app
+      - ./backend/cpp:/audio_engine
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    depends_on:
+      - rails
+      - audio_engine
+      - redis
 
   audio_engine:
     image: ubuntu:24.04
     working_dir: /app
     command: bash -lc "apt-get update && apt-get install -y cmake g++ libsndfile1-dev pkg-config && cmake -S . -B build && cmake --build build && tail -f /dev/null"
     volumes:
-      - ./audio_engine:/app
+      - ./backend/cpp:/app
 
   postgres:
     image: postgres:17-alpine
@@ -101,9 +115,11 @@ services:
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - frontend
-      - rails
+      - go
 
 volumes:
   frontend_node_modules:
+  go_mod_cache:
+  go_build_cache:
   rails_bundle:
   postgres_data:

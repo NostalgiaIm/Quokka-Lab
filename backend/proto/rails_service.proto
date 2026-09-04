@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package quokka.rails.v1;
+
+option go_package = "github.com/NostalgiaIm/Quokka-Lab/backend/go/api/railspb";
+
+message CompositionSummary {
+  int64 id = 1;
+  string title = 2;
+  string audio_url = 3;
+  int32 bpm = 4;
+  string key_signature = 5;
+  bool is_public = 6;
+}
+
+message ListCompositionsRequest {
+  bool public_only = 1;
+}
+
+message ListCompositionsResponse {
+  repeated CompositionSummary compositions = 1;
+}
+
+message UserQuotaRequest {
+  int64 user_id = 1;
+}
+
+message UserQuotaResponse {
+  int32 remaining_ai_tasks = 1;
+  int32 remaining_audio_jobs = 2;
+}
+
+service RailsDataService {
+  rpc ListCompositions(ListCompositionsRequest) returns (ListCompositionsResponse);
+  rpc GetUserQuota(UserQuotaRequest) returns (UserQuotaResponse);
+}

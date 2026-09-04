@@ -5,16 +5,18 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-backend_ruby/.bundle/
-backend_ruby/log/
-backend_ruby/tmp/
-backend_ruby/storage/
-backend_ruby/vendor/bundle/
+backend/rails/.bundle/
+backend/rails/log/
+backend/rails/tmp/
+backend/rails/storage/
+backend/rails/vendor/bundle/
 
-backend_php/vendor/
-backend_php/storage/
+backend/go/bin/
+backend/go/coverage.out
+.gocache/
+.gomodcache/
 
-audio_engine/build/
+backend/cpp/build/
 
 .env
 

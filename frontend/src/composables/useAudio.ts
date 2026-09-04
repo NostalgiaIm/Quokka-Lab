@@ -21,12 +21,12 @@ const ATTACK_SECONDS = 0.012;
 const RELEASE_SECONDS = 0.08;
 
 /**
- * 创建 Quokka Studio 在浏览器端使用的合成器音频图。
+ * Creates the browser-side synth graph used by Quokka Studio.
  *
- * 音频链路：
+ * Audio route:
  * OscillatorNode -> GainNode -> master GainNode -> AnalyserNode
- *                                          |-> 扬声器播放
- *                                          |-> MediaRecorder 录制流
+ *                                          |-> speaker playback
+ *                                          |-> MediaRecorder stream
  */
 export function useAudio(): AudioEngine {
   const AudioContextConstructor = window.AudioContext ?? window.webkitAudioContext;
@@ -74,7 +74,7 @@ export function useAudio(): AudioEngine {
         workletReady = true;
       })
       .catch((error) => {
-        console.warn('AudioWorklet 不可用，已回退到直接 Web Audio 链路。', error);
+        console.warn('AudioWorklet is unavailable; falling back to the direct Web Audio route.', error);
       });
 
     await workletPromise;

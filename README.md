@@ -1,68 +1,77 @@
 # Quokka-Lab
 
-Quokka-Lab is a web-based music creation and sharing platform. It lets users play notes in the browser, record melodies, upload compositions, share public works, and render offline audio effects through a C++ DSP engine.
+Quokka-Lab is a web-based music creation and sharing platform built around an efficiency-first heterogeneous architecture. Vue powers the browser studio, Go is the public core service, Rails owns data and administration, and C++ handles offline audio DSP.
 
-The project is designed as a multi-language reference application:
+The goal is to keep every language in the place where it is strongest:
 
-- Vue 3 and TypeScript power the browser studio.
-- Ruby on Rails provides the primary API and data model.
-- C++ handles offline audio processing.
-- PHP provides a lightweight compatibility API.
-- Docker Compose wires the development stack together.
-
-Quokka-Lab also reserves an internal integration point for Liora through `POST /internal/liora_trigger`.
-
-## Features
-
-- Two-octave browser keyboard from C4 to B5.
-- Computer keyboard and mouse input support.
-- Web Audio synthesis with `sine`, `square`, `sawtooth`, and `triangle` waveforms.
-- MediaRecorder-based recording with playback and download.
-- Recording upload to the Rails API.
-- Public composition list from PostgreSQL.
-- Likes and comments for public compositions.
-- Optional sign-up and login through Devise JWT.
-- Offline C++ audio processing for reverb, delay, and basic pitch shifting.
-- Rails health check endpoint.
-- Action Cable collaboration channel scaffold.
-- Sidekiq background job scaffold.
-- PHP compatibility API scaffold.
+- Vue 3 and TypeScript provide the creative interface, keyboard input, recording, and visualization.
+- Go exposes the public REST API boundary, WebSocket collaboration rooms, gateway logic, and future task scheduling.
+- Rails remains the internal data authority for Active Record models, migrations, uploads, and admin-oriented workflows.
+- C++ performs CPU-heavy audio rendering, including reverb, delay, and pitch shifting.
+- PostgreSQL stores durable application data, and Redis is reserved for cache, sessions, rate limiting, and Redis Stream jobs.
 
 ## Architecture
 
+```mermaid
+flowchart LR
+  client[Vue 3 Browser Studio]
+  go[Go Core Service<br/>API Gateway + WebSocket Hub + Scheduler]
+  rails[Rails Admin/Data Backend<br/>Active Record + PostgreSQL]
+  cpp[C++ Audio Engine<br/>DSP Rendering]
+  pg[(PostgreSQL)]
+  redis[(Redis)]
+  storage[(Local/S3-compatible Audio Storage)]
+
+  client <--> |HTTP REST| go
+  client <--> |WebSocket| go
+  go <--> |Internal HTTP now<br/>gRPC target| rails
+  go <--> |UDS + Cap'n Proto target<br/>CLI fallback now| cpp
+  go <--> redis
+  rails <--> pg
+  rails <--> redis
+  rails <--> storage
+```
+
+## Repository Layout
+
 ```text
-Quokka/
-├── frontend/        Vue 3 + TypeScript studio
-├── backend_ruby/    Rails 8 API, PostgreSQL, Active Storage, Devise JWT
-├── backend_php/     Lightweight PHP API compatibility layer
-├── audio_engine/    C++20 command-line audio DSP engine
-├── infra/nginx/     Local reverse proxy configuration
-├── docs/            Development and troubleshooting notes
-├── quokka_reference/ Learning path and architecture reference
+quokka-lab/
+├── frontend/                 Vue 3 + TypeScript studio
+├── backend/
+│   ├── go/                   Go API gateway, WebSocket hub, service orchestration
+│   ├── rails/                Rails API-mode data authority and upload backend
+│   ├── cpp/                  C++20 audio DSP command-line engine
+│   └── proto/                Internal gRPC and Cap'n Proto contracts
+├── infra/nginx/              Local reverse proxy configuration
+├── docs/                     Architecture and learning/build path
+├── deploy/                   Reserved deployment manifests
 └── docker-compose.yml
 ```
 
-| Layer             | Stack                                           | Responsibility                                              |
-| ----------------- | ----------------------------------------------- | ----------------------------------------------------------- |
-| Frontend          | Vue 3, TypeScript, Web Audio API, MediaRecorder | Music input, synthesis, recording, visualization, upload UI |
-| Primary API       | Ruby on Rails 8, PostgreSQL                     | Users, compositions, uploads, comments, likes, playlists    |
-| Audio engine      | C++20, CMake, libsndfile                        | Offline WAV rendering with DSP effects                      |
-| Queue             | Sidekiq, Redis                                  | Long-running audio and AI jobs                              |
-| Realtime          | Action Cable                                    | Collaboration room events                                   |
-| Proxy             | Nginx                                           | Unified local entry point                                   |
-| Compatibility API | PHP 8                                           | Alternate API surface for experiments                       |
+## Current MVP
+
+- Two-octave browser keyboard from C4 to B5.
+- Mouse and computer-keyboard note input.
+- Web Audio synthesis with sine, square, sawtooth, and triangle oscillators.
+- AudioWorklet-aware output path with a direct Web Audio fallback.
+- MediaRecorder recording, preview, download, and upload.
+- Public composition list backed by Rails and PostgreSQL.
+- Go gateway health, AI placeholder endpoints, and Liora trigger endpoint.
+- Go WebSocket collaboration room at `/ws/collaboration/:room_id`.
+- C++ command-line audio engine with reverb, delay, and basic pitch shifting.
+- Docker Compose local stack with Nginx, Vue, Go, Rails, PostgreSQL, Redis, Sidekiq, and C++ build service.
 
 ## Requirements
 
-The easiest path is Docker Desktop with the Linux/WSL2 engine enabled.
+The recommended path is Docker Desktop with the Linux/WSL2 engine enabled.
 
 For manual development, install:
 
 - Node.js 22+
+- Go 1.22+
 - Ruby 3.3+
 - PostgreSQL 17+
 - Redis 7+
-- PHP 8.3+
 - CMake 3.20+
 - A C++20 compiler
 - libsndfile
@@ -70,7 +79,7 @@ For manual development, install:
 
 ## Quick Start
 
-From the project root:
+From the repository root:
 
 ```bash
 docker compose up --build
@@ -82,53 +91,22 @@ Open:
 http://localhost:8088
 ```
 
-Useful service URLs:
+Useful local URLs:
 
 ```text
+Unified app entry:   http://localhost:8088
 Frontend dev server: http://localhost:5173
-Rails API:           http://localhost:3000
-Unified entry:       http://localhost:8088
-PHP API:             http://localhost:8080
+Go gateway:          http://localhost:8080
+Rails internal API:  http://localhost:3000
 PostgreSQL:          localhost:5432
 Redis:               localhost:6379
 ```
 
-The first startup may take a while because Docker installs dependencies, builds the C++ audio engine, prepares the database, and seeds demo data.
+The first startup can take a while because Docker installs dependencies, builds the C++ engine, prepares Rails dependencies, and starts the Go gateway.
 
-Demo account:
+## Main API Surface
 
-```text
-Email:    demo@quokka.local
-Password: password123
-```
-
-## Running The App
-
-1. Open `http://localhost:8088`.
-2. Click or press mapped keys on the virtual keyboard.
-3. Choose waveform, volume, visualizer mode, and effect parameters.
-4. Click `Record`.
-5. Play a short melody.
-6. Click `Stop`.
-7. Click `Upload` to save the original recording.
-8. Click `C++ Reverb` to process the recording through the audio engine.
-9. Use `Refresh` in the composition list to reload public works.
-
-## Keyboard Mapping
-
-White keys:
-
-```text
-A S D F G H J K L Z X C V B
-```
-
-Black keys:
-
-```text
-Q W E R T Y U I O P
-```
-
-## API Endpoints
+Public traffic should enter through the Go gateway:
 
 ```http
 GET    /api/v1/health
@@ -148,9 +126,11 @@ DELETE /api/v1/logout
 POST   /api/v1/ai/chords
 POST   /api/v1/ai/mix
 POST   /api/v1/ai/style_transfer
-POST   /api/v1/collaboration/:room_id/events
 POST   /internal/liora_trigger
+WS     /ws/collaboration/:room_id
 ```
+
+During the MVP, Go handles gateway-owned endpoints directly and proxies persistence-heavy resources to Rails. The planned next step is to replace internal proxy calls with gRPC contracts from `backend/proto/rails_service.proto`.
 
 Health check:
 
@@ -169,7 +149,7 @@ curl -F "composition[title]=First melody" \
   http://localhost:8088/api/v1/compositions
 ```
 
-Process audio through the C++ engine:
+Process audio through the C++ fallback path:
 
 ```bash
 curl -F "title=Processed melody" \
@@ -178,6 +158,20 @@ curl -F "title=Processed melody" \
   -F "pitch_semitones=0" \
   -F "audio=@recording.webm" \
   http://localhost:8088/api/v1/audio/process
+```
+
+## Keyboard Mapping
+
+White keys:
+
+```text
+A S D F G H J K L Z X C V B
+```
+
+Black keys:
+
+```text
+Q W E R T Y U I O P
 ```
 
 ## Manual Development
@@ -190,18 +184,19 @@ npm install
 npm run dev
 ```
 
-Frontend verification:
+Go gateway:
 
 ```bash
-npm run build
-npm test
-npm run lint
+cd backend/go
+go mod tidy
+go run ./cmd/api
+go test ./...
 ```
 
-Rails API:
+Rails data backend:
 
 ```bash
-cd backend_ruby
+cd backend/rails
 bundle install
 bin/rails db:prepare
 bin/rails db:seed
@@ -211,24 +206,17 @@ bin/rails server
 Sidekiq:
 
 ```bash
-cd backend_ruby
+cd backend/rails
 bundle exec sidekiq
 ```
 
 C++ audio engine:
 
 ```bash
-cd audio_engine
+cd backend/cpp
 cmake -S . -B build
 cmake --build build
 ./build/quokka_audio input.wav output.wav --reverb 0.8 --delay-ms 250 --pitch-semitones 0
-```
-
-PHP compatibility API:
-
-```bash
-cd backend_php
-php -S 0.0.0.0:8080 -t public
 ```
 
 ## Docker Commands
@@ -254,7 +242,7 @@ docker compose ps
 View logs:
 
 ```bash
-docker compose logs -f rails frontend nginx
+docker compose logs -f go rails frontend nginx
 ```
 
 Stop services:
@@ -270,22 +258,16 @@ docker compose down -v
 docker compose up --build
 ```
 
-## Testing Status
+## Documentation
 
-The frontend project has been verified with:
-
-```bash
-npm run build
-npm test
-npm run lint
-```
-
-The Rails and PHP code has been checked for syntax. Docker Compose has been validated and the main local endpoints have been tested through `http://localhost:8088`.
+- `docs/architecture.md` explains the Go/Rails/C++ responsibility split and major request flows.
+- `docs/learning-path.md` lists a simple-to-advanced learning and build order based on official language and framework documentation.
+- `backend/proto/rails_service.proto` reserves the internal Rails gRPC boundary.
+- `backend/proto/audio.capnp` reserves the Go-to-C++ Unix domain socket message contract.
 
 ## Notes
 
+- Rails is still reachable on port `3000` for local debugging, but browser and client traffic should use the Go gateway.
 - The C++ pitch-shift effect is an MVP implementation based on linear resampling. Replace it with a phase vocoder for production-quality pitch shifting.
-- The Rails API allows guest creation, likes, and comments during MVP development.
-- Active Storage uses local disk storage by default. S3 or MinIO can be added later.
 - The AI endpoints currently return deterministic scaffold responses and are ready for future model integration.
-- The Liora integration endpoint is reserved for internal automation and future sound-module triggers.
+- The Liora integration endpoint is reserved for future sound-module triggers through `POST /internal/liora_trigger`.

@@ -14,6 +14,9 @@ module.exports = {
     'eslint:recommended',
     'plugin:vue/vue3-recommended',
     'plugin:@typescript-eslint/recommended',
-    '@vue/eslint-config-prettier',
+    '@vue/eslint-config-prettier/skip-formatting',
   ],
+  rules: {
+    'vue/multi-word-component-names': 'off',
+  },
 };
